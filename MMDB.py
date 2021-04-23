@@ -95,9 +95,9 @@ class MMDB:
         '''
         Save all the data to json files
         '''
-        with open(str(self.fileSaveDir) + '\movie_data.json', 'w') as outfile:
+        with open(str(self.fileSaveDir) + '\\movie_data.json', 'w') as outfile:
             json.dump(self.movieData, outfile)
-        with open(str(self.fileSaveDir) + '\actors_sorted.json', 'w') as outfile:
+        with open(str(self.fileSaveDir) + '\\actors_sorted.json', 'w') as outfile:
             json.dump(self.actorNumDict, outfile)
             print("Data Saved")
     

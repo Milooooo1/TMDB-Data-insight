@@ -28,6 +28,8 @@ class MMDB:
         self.actorDict    = dict()
         self.actorNumDict = dict()
         self.genreNumDict = dict()
+        self.directorData = dict()
+        self.directorDict = dict()
         
     def update(self):
         '''
@@ -61,7 +63,7 @@ class MMDB:
                     continue
         
                 #Get all the movie details
-                url = "https://api.themoviedb.org/3/movie/" + str(movie_id) + "?api_key= " + str(self.API_KEY)+"&append_to_response=credits"
+                url = "https://api.themoviedb.org/3/movie/" + str(movie_id) + "?api_key=" + str(self.API_KEY)+"&append_to_response=credits"
                 response = requests.request("GET", url)
                 cast_results = response.json()
         
@@ -174,12 +176,36 @@ class MMDB:
                 self.totalWatchTime += 0
         
         return self.totalWatchTime, self.totalMovies, index
-                    
+
+
+    def getDirectorData(self):
+        for movie in self.movieData.keys():
+            try:
+                if self.movieData[movie]['director']['name'] in self.directorData.keys():
+                    self.directorData[self.movieData[movie]['director']['name']] += 1
+                    self.directorDict[self.movieData[movie]['director']['name']]['movies'].append(movie)
+                    self.directorDict[self.movieData[movie]['director']['name']]['num'] += 1
+                else:
+                    self.directorData[self.movieData[movie]['director']['name']] = 1
+                    self.directorDict[self.movieData[movie]['director']['name']] = {'movies' : [movie]}
+                    self.directorDict[self.movieData[movie]['director']['name']]['num'] = 1
+            except Exception:
+                print("No Director found for movie: " + str(movie))
+
+        sorted_dict = {}
+        sorted_keys = sorted(self.directorData, key=self.directorData.get)
+        
+        for w in sorted_keys:
+            sorted_dict[w] = self.directorData[w]
+            
+        self.directorData = sorted_dict
+
+        return self.directorData, self.directorDict                  
     
 '''
 Possible Additions:
     My scoring average difference
     Total amount of money spent on the movies I watched
-    Most watched directors
+    Add support for queries about anything, also movies I haven't watched
     Start the automation of graphs and word clouds
 '''

@@ -5,6 +5,8 @@ Created on Thu Apr 22 20:12:03 2021
 @author: Milo
 """
 
+from datetime import date
+import math
 import requests
 import json
 
@@ -30,6 +32,7 @@ class MMDB:
         self.genreNumDict = dict()
         self.directorData = dict()
         self.directorDict = dict()
+        self.moviesByYear = dict()
         
     def update(self):
         '''
@@ -102,6 +105,16 @@ class MMDB:
         with open(str(self.fileSaveDir) + '\\actors_sorted.json', 'w') as outfile:
             json.dump(self.actorNumDict, outfile)
             print("Data Saved")
+    
+    
+    def sortDict(self, dictToSort):
+        sorted_dict = {}
+        sorted_keys = sorted(dictToSort, key=dictToSort.get)
+        
+        for w in sorted_keys:
+            sorted_dict[w] = dictToSort[w]
+            
+        return sorted_dict
     
     
     def getActorData(self):
@@ -179,6 +192,7 @@ class MMDB:
 
 
     def getDirectorData(self):
+        self.directorData, self.directorDict = {}
         for movie in self.movieData.keys():
             try:
                 if self.movieData[movie]['director']['name'] in self.directorData.keys():
@@ -200,12 +214,92 @@ class MMDB:
             
         self.directorData = sorted_dict
 
-        return self.directorData, self.directorDict                  
+        return self.directorData, self.directorDict 
+
+    def getNumMoviesByYear(self):
+        self.moviesByYear = {}
+        for movie in self.movieData.keys():
+            if self.movieData[movie]['release_date'][:4] in self.moviesByYear.keys():
+                self.moviesByYear[self.movieData[movie]['release_date'][:4]] += 1
+            else:
+                self.moviesByYear[self.movieData[movie]['release_date'][:4]] = 1
+        
+        self.moviesByYear = self.sortDict(self.moviesByYear)
+        
+        return self.moviesByYear                     
+    
+    def searchActor(self, actor):
+        url = "https://api.themoviedb.org/3/search/person?api_key=" + str(self.API_KEY) + "&query=" + actor               
+        response = requests.request("GET", url)
+        actor_results = response.json()
+        found = False
+        for result in actor_results['results']:
+            if result['name'].replace(" ", "").lower() == actor.replace(" ", "").lower() and result['known_for_department'] == "Acting":
+                actorID = result['id']
+                found = True
+            else:
+                continue        
+        
+        if found == False:
+            print("Nothing found for actor: " + actor)
+            return
+        
+        url = "https://api.themoviedb.org/3/person/" + str(actorID) + "?api_key=" + str(self.API_KEY) +"&append_to_response=movie_credits"
+        response = requests.request("GET", url)
+        actor_results = response.json()
+        
+        
+        today = date.today()
+        birthday = date(int(actor_results['birthday'][:4]), int(actor_results['birthday'][5:7]), int(actor_results['birthday'][8:10]))
+        age = today - birthday
+        
+        print("Actor: " + actor_results['name'])
+        print(str(actor_results['name']) + " is " + str(math.floor(age.days / 365)) + " years old")
+        
+        watched        = []
+        not_watched    = []
+        to_be_released = []
+        
+        for movie in actor_results['movie_credits']['cast']:
+            try:
+                search = str(movie['title'] + " " + movie['release_date'][:4])                
+                if not (movie['release_date'] == ""):
+                    not_watched.append(search)
+                    
+            except:
+                to_be_released.append(movie['title'])
+                continue
+            
+        watched = self.getActorSpecificData(actor_results['name'])[0]['movies']
+        for i in range(len(watched)):
+            for j in range(len(not_watched)):
+                if not_watched[j].lower().replace(" ", "") == watched[i].lower().replace(" ", ""):
+                    not_watched.pop(j)
+                else:
+                    continue
+        
+        print("You've watched: " + str(len(watched)) + " movies starring " + str(actor_results['name']))
+        
+        print()    
+        print("All the movies you've watched starring: " + str(actor_results['name']))
+        for i in range(len(watched)):
+            print(watched[i])
+        
+        print()
+        print("All the movies you have not watched starring: " + str(actor_results['name']))
+        for i in range(len(not_watched)):
+            line_new = f"{not_watched[i][:-4]:<70}{not_watched[i][-4:]:>30}"
+            print(line_new)
+        
+        print()
+        print(str(actor_results['name']) + " is playing in the following movies that are yet to be released:")
+        for i in range(len(to_be_released)):
+            print(to_be_released[i])
+        
     
 '''
 Possible Additions:
     My scoring average difference
     Total amount of money spent on the movies I watched
     Add support for queries about anything, also movies I haven't watched
-    Start the automation of graphs and word clouds
 '''
